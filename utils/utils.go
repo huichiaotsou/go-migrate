@@ -1,17 +1,11 @@
 package utils
 
-var accountParser = []string{
-	"singer", "sender", "to_address", "from_address", "delegator_address",
-	"validator_address", "submitter", "proposer", "depositor", "voter",
-	"validator_dst_address", "validator_src_address",
-}
-
-var customAccountParser = []string{ // for desmos
-	"receiver", "user", "counterparty", "blocker", "blocked",
-}
+import (
+	"github.com/huichiaotsou/migrate-go/types"
+)
 
 func MessageParser(msg map[string]interface{}) (addresses string) {
-	accountParser = append(accountParser, customAccountParser...)
+	accountParser := append(types.DefaultAccountParser, types.CustomAccountParser...)
 
 	addresses += "{"
 	for _, role := range accountParser {

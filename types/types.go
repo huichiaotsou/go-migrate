@@ -2,7 +2,7 @@ package types
 
 type TransactionRow struct {
 	Hash        string `db:"hash"`
-	Height      string `db:"height"`
+	Height      int64  `db:"height"`
 	Success     string `db:"success"`
 	Messages    string `db:"messages"`
 	Memo        string `db:"memo"`
