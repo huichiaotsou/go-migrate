@@ -3,21 +3,20 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
 	"github.com/huichiaotsou/migrate-go/types"
 	"github.com/huichiaotsou/migrate-go/utils"
 	"github.com/jmoiron/sqlx"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	err := godotenv.Load()
+	cfg := &types.Config{}
+	err := types.SetConfig(cfg)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error while setting config")
 	}
+
 	db := utils.GetDB()
 	defer db.Close()
 
@@ -31,12 +30,12 @@ func main() {
 		log.Fatal("Error while creating tables")
 	}
 
-	txRows, err := selectRows(db)
+	txRows, err := selectRows(cfg.Limit, cfg.PartitionSize, db)
 	if err != nil {
 		log.Fatalf("error while selecting transaction rows: %s", err)
 	}
 
-	err = utils.InsertTransactions(txRows, db)
+	err = utils.InsertTransactions(txRows, cfg, db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,19 +50,10 @@ func main() {
 	}
 }
 
-func selectRows(db *sqlx.DB) ([]types.TransactionRow, error) {
-	limit, err := strconv.ParseInt(os.Getenv("BATCH"), 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("error while converting LIMIT from string to int64: %s", err)
-	}
-	partitionSize, err := strconv.ParseInt(os.Getenv("PARTITION_SIZE"), 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("error while converting PARTITION_SIZE from string to int64: %s", err)
-	}
-
+func selectRows(limit int64, partitionSize int64, db *sqlx.DB) ([]types.TransactionRow, error) {
 	stmt := fmt.Sprintf("SELECT * FROM transaction ORDER BY height LIMIT %v OFFSET %v", limit, partitionSize)
 	var txRows []types.TransactionRow
-	err = db.Select(&txRows, stmt)
+	err := db.Select(&txRows, stmt)
 	if err != nil {
 		return nil, err
 	}

@@ -11,19 +11,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func InsertTransactions(txRows []types.TransactionRow, db *sqlx.DB) error {
+func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sqlx.DB) error {
 	stmt := `INSERT INTO transaction 
 (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs, partition_id) VALUES 
 `
 	var params []interface{}
 	for i, tx := range txRows {
 		// Create partition table if not exists
-		partitionSize, err := strconv.ParseInt(os.Getenv("PARTITION_SIZE"), 10, 64)
-		if err != nil {
-			return fmt.Errorf("error while parsing partition size to int64 for transaction: %s", err)
-		}
-		partitionID := tx.Height / partitionSize
-		err = CreatePartitionTable("transaction", partitionID, db)
+		partitionID := tx.Height / cfg.PartitionSize
+		err := CreatePartitionTable("transaction", partitionID, db)
 		if err != nil {
 			return fmt.Errorf("error while creating transaction partition table: %s", err)
 		}

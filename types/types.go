@@ -14,3 +14,8 @@ type TransactionRow struct {
 	RawLog      string `db:"raw_log"`
 	Logs        string `db:"logs"`
 }
+
+type Config struct {
+	Limit         int64
+	PartitionSize int64
+}
