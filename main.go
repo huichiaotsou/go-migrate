@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/huichaiotsou/go-migrate/types"
-	"github.com/huichaiotsou/go-migrate/utils"
+	"github.com/huichiaotsou/migrate-go/types"
+	"github.com/huichiaotsou/migrate-go/utils"
 	_ "github.com/lib/pq"
 )
 
