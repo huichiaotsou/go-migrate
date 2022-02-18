@@ -86,13 +86,11 @@ func createMsgTable(db *sqlx.DB) error {
 
 func CreatePartitionTable(table string, partitionID int64, db *sqlx.DB) error {
 	partitionTable := fmt.Sprintf("%s_%v", table, partitionID)
-	stmt := `CREATE TABLE IF NOT EXISTS $1 PARTITION OF transaction FOR VALUES IN ($2)`
-	_, err := db.Exec(stmt, partitionTable, partitionID)
+	stmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%v)`, partitionTable, table, partitionID)
+	_, err := db.Exec(stmt)
 	if err != nil {
 		return fmt.Errorf("error while creating %s partition table: %s", table, err)
 	}
-	fmt.Println("partitionTable: ", partitionTable)
-	fmt.Println("stmt", stmt)
 	return nil
 }
 

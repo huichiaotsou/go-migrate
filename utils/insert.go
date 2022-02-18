@@ -18,7 +18,7 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sq
 	var params []interface{}
 	for i, tx := range txRows {
 		// Create partition table if not exists
-		partitionID := tx.Height / cfg.PartitionSize
+		partitionID := tx.Height / int64(cfg.PartitionSize)
 		err := CreatePartitionTable("transaction", partitionID, db)
 		if err != nil {
 			return fmt.Errorf("error while creating transaction partition table: %s", err)
@@ -65,8 +65,8 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 	}
 
 	// Prepare stmt
-	stmt := `INSERT INTO messages 
-(hash, index, type, value, involved_accounts_addresses, height, partition_id) VALUES `
+	stmt := `INSERT INTO message 
+(transaction_hash, index, type, value, involved_accounts_addresses, height, partition_id) VALUES `
 
 	// Prepare params
 	var params []interface{}
@@ -83,7 +83,8 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 		msgType := msg["@type"].(string)
 		involvedAddresses := MessageParser(msg)
 		delete(msg, "@type")
-		params = append(params, tx.Hash, i, msgType, msg, involvedAddresses, tx.Height, partitionID)
+		msgType = msgType[1:] // remove /
+		params = append(params, tx.Hash, i, msgType, fmt.Sprintf("%s", msg), involvedAddresses, tx.Height, partitionID)
 
 		// Add columns to stmt
 		ai := i * 7
