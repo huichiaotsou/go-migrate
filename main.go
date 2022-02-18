@@ -36,6 +36,10 @@ func main() {
 	for {
 		fmt.Printf("Migrating from row %v to row %v\n", offset, offset+limit)
 		txRows, err := selectRows(limit, offset, db)
+		if len(txRows) == 0 {
+			break
+		}
+
 		if err != nil {
 			log.Fatal("error while selecting transaction rows: ", err)
 		}
@@ -45,9 +49,6 @@ func main() {
 		}
 
 		offset += limit
-		if len(txRows) == 0 {
-			break
-		}
 	}
 
 	err = utils.DropMessageByAddressFunc(db)

@@ -38,7 +38,7 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sq
 
 	_, err := db.Exec(stmt, params...)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while inserting transaction: %s", err)
 	}
 
 	for _, tx := range txRows {
@@ -83,8 +83,8 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 		msgType := msg["@type"].(string)
 		involvedAddresses := MessageParser(msg)
 		delete(msg, "@type")
-		msgType = msgType[1:] // remove /
-		params = append(params, tx.Hash, i, msgType, fmt.Sprintf("%s", msg), involvedAddresses, tx.Height, partitionID)
+		msgType = msgType[1:] // remove "/"
+		params = append(params, tx.Hash, i, msg, msgType, involvedAddresses, tx.Height, partitionID)
 
 		// Add columns to stmt
 		ai := i * 7
@@ -92,7 +92,7 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 			ai+1, ai+2, ai+3, ai+4, ai+5, ai+6, ai+7)
 	}
 
-	stmt = stmt[:len(stmt)-1] // remove trailing ,
+	stmt = stmt[:len(stmt)-1] // remove trailing ","
 	stmt += " ON CONFLICT DO NOTHING"
 
 	_, err = db.Exec(stmt, params...)
