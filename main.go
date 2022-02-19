@@ -18,14 +18,14 @@ func main() {
 	}
 
 	db := utils.GetDB()
-	defer db.Close()
+	defer db.Sqlx.Close()
 
-	err = utils.AlterTables(db)
+	err = utils.AlterTables(db.Sqlx)
 	if err != nil {
 		log.Fatal("Error while altering tables", err)
 	}
 
-	err = utils.CreateTables(db)
+	err = utils.CreateTables(db.Sqlx)
 	if err != nil {
 		log.Fatal("Error while creating tables: ", err)
 	}
@@ -35,7 +35,7 @@ func main() {
 
 	for {
 		fmt.Printf("Migrating from row %v to row %v\n", offset, offset+limit)
-		txRows, err := selectRows(limit, offset, db)
+		txRows, err := selectRows(limit, offset, db.Sqlx)
 		if len(txRows) == 0 {
 			break
 		}
@@ -51,11 +51,11 @@ func main() {
 		offset += limit
 	}
 
-	err = utils.DropMessageByAddressFunc(db)
+	err = utils.DropMessageByAddressFunc(db.Sqlx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = utils.CreateMessageByAddressFunc(db)
+	err = utils.CreateMessageByAddressFunc(db.Sqlx)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func GetDB() *sqlx.DB {
+func GetDB() *DB {
 	connStr := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s",
 		os.Getenv("PGHOST"), os.Getenv("PGPORT"), os.Getenv("PGDATABASE"), os.Getenv("PGUSER"), os.Getenv("PGPASSWORD"),
 	)
@@ -18,5 +18,13 @@ func GetDB() *sqlx.DB {
 	if err != nil {
 		log.Fatal("Error while connecting psql DB: ", err)
 	}
-	return sqlx.NewDb(db, "postgresql")
+	return &DB{
+		Db:   db,
+		Sqlx: sqlx.NewDb(db, "postgresql"),
+	}
+}
+
+type DB struct {
+	Db   *sql.DB
+	Sqlx *sqlx.DB
 }

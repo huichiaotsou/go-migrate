@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,7 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sqlx.DB) error {
+func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *DB) error {
 	stmt := `INSERT INTO transaction 
 (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs, partition_id) VALUES 
 `
@@ -19,7 +21,7 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sq
 	for i, tx := range txRows {
 		// Create partition table if not exists
 		partitionID := tx.Height / int64(cfg.PartitionSize)
-		err := CreatePartitionTable("transaction", partitionID, db)
+		err := CreatePartitionTable("transaction", partitionID, db.Sqlx)
 		if err != nil {
 			return fmt.Errorf("error while creating transaction partition table: %s", err)
 		}
@@ -36,14 +38,14 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *sq
 	stmt = stmt[:len(stmt)-1] // remove trailing ,
 	stmt += " ON CONFLICT DO NOTHING"
 
-	_, err := db.Exec(stmt, params...)
+	_, err := db.Sqlx.Exec(stmt, params...)
 	if err != nil {
 		return fmt.Errorf("error while inserting transaction: %s", err)
 	}
 
 	for _, tx := range txRows {
 		// Handle messages of this transaction
-		err := InsertMessages(tx, db)
+		err := InsertMessages(tx, db.Sqlx)
 		if err != nil {
 			return fmt.Errorf("error while inserting messages: %s", err)
 		}
@@ -78,13 +80,17 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 		log.Fatalf("error while unmarshaling messages: %s", err.Error())
 	}
 
-	for i, msg := range msgs {
+	for i, m := range msgs {
 		// Append params
-		msgType := msg["@type"].(string)
-		involvedAddresses := MessageParser(msg)
-		delete(msg, "@type")
-		msgType = msgType[1:] // remove "/"
-		params = append(params, tx.Hash, i, msg, msgType, involvedAddresses, tx.Height, partitionID)
+		msgType := m["@type"].(string)
+		involvedAddresses := MessageParser(m)
+		delete(m, "@type")
+		mBz, err := json.Marshal(&m)
+		if err != nil {
+			return fmt.Errorf("error while marshaling msg value to json: %s", err)
+		}
+		// ALWAYS ERROR OUT HERE!!!
+		params = append(params, tx.Hash, i, string(mBz), msgType[1:], involvedAddresses, tx.Height, partitionID)
 
 		// Add columns to stmt
 		ai := i * 7
@@ -101,4 +107,24 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 	}
 
 	return nil
+}
+
+type Message struct {
+	Type  int `json:"@type"`
+	Value Value
+}
+
+type Value map[string]interface{}
+
+func (a Value) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+func (a *Value) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &a)
 }
