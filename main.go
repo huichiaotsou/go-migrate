@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/huichiaotsou/migrate-go/types"
 	"github.com/huichiaotsou/migrate-go/utils"
@@ -20,44 +21,53 @@ func main() {
 	db := utils.GetDB()
 	defer db.Sqlx.Close()
 
-	err = utils.AlterTables(db.Sqlx)
-	if err != nil {
-		log.Fatal("Error while altering tables", err)
+	if len(os.Args) < 2 {
+		fmt.Println("Missing argument: perpare-tables or migrate")
+		return
 	}
 
-	err = utils.CreateTables(db.Sqlx)
-	if err != nil {
-		log.Fatal("Error while creating tables: ", err)
-	}
-
-	limit := cfg.Limit
-	offset := int64(0)
-
-	for {
-		fmt.Printf("Migrating from row %v to row %v\n", offset, offset+limit)
-		txRows, err := selectRows(limit, offset, db.Sqlx)
-		if len(txRows) == 0 {
-			break
-		}
-
+	switch os.Args[1] {
+	case "prepare-tables":
+		err = utils.AlterTables(db.Sqlx)
 		if err != nil {
-			log.Fatal("error while selecting transaction rows: ", err)
+			log.Fatal("Error while altering tables", err)
 		}
-		err = utils.InsertTransactions(txRows, cfg, db)
+
+		err = utils.CreateTables(db.Sqlx)
+		if err != nil {
+			log.Fatal("Error while creating tables: ", err)
+		}
+
+	case "migrate":
+		limit := cfg.Limit
+		offset := int64(0)
+
+		for {
+			fmt.Printf("Migrating from row %v to row %v\n", offset, offset+limit)
+			txRows, err := selectRows(limit, offset, db.Sqlx)
+			if len(txRows) == 0 {
+				break
+			}
+
+			if err != nil {
+				log.Fatal("error while selecting transaction rows: ", err)
+			}
+			err = utils.InsertTransactions(txRows, cfg, db)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			offset += limit
+		}
+
+		err = utils.DropMessageByAddressFunc(db.Sqlx)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		offset += limit
-	}
-
-	err = utils.DropMessageByAddressFunc(db.Sqlx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = utils.CreateMessageByAddressFunc(db.Sqlx)
-	if err != nil {
-		log.Fatal(err)
+		err = utils.CreateMessageByAddressFunc(db.Sqlx)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
