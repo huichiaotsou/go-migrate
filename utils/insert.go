@@ -89,8 +89,7 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 		if err != nil {
 			return fmt.Errorf("error while marshaling msg value to json: %s", err)
 		}
-		// ALWAYS ERROR OUT HERE!!!
-		params = append(params, tx.Hash, i, string(mBz), msgType[1:], involvedAddresses, tx.Height, partitionID)
+		params = append(params, tx.Hash, i, msgType[1:], string(mBz), involvedAddresses, tx.Height, partitionID)
 
 		// Add columns to stmt
 		ai := i * 7
