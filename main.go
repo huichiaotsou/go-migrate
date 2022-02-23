@@ -5,19 +5,19 @@ import (
 	"log"
 	"os"
 
+	"github.com/huichiaotsou/migrate-go/database"
 	"github.com/huichiaotsou/migrate-go/types"
-	"github.com/huichiaotsou/migrate-go/utils"
 	_ "github.com/lib/pq"
 )
 
 func main() {
 	cfg := &types.Config{}
-	err := types.SetConfig(cfg)
+	err := types.GetEnvConfig(cfg)
 	if err != nil {
 		log.Fatal("Error while setting config", err)
 	}
 
-	db := utils.GetDB()
+	db := database.GetDB()
 	defer db.Sqlx.Close()
 
 	if len(os.Args) < 2 {

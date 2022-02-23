@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func SetConfig(cfg *Config) error {
+func GetEnvConfig(cfg *Config) error {
 	err := godotenv.Load()
 	if err != nil {
 		return fmt.Errorf("error while loading .env file: %s", err)
