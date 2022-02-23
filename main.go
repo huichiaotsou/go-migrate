@@ -7,7 +7,6 @@ import (
 
 	"github.com/huichiaotsou/migrate-go/types"
 	"github.com/huichiaotsou/migrate-go/utils"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
@@ -29,11 +28,11 @@ func main() {
 	switch os.Args[1] {
 	case "prepare-tables":
 		fmt.Println("--- Preparing tables ---")
-		err = utils.AlterTables(db.Sqlx)
+		err = db.AlterTables()
 		if err != nil {
-			log.Fatal("Error while altering tables", err)
+			log.Fatal("Error while altering tables: ", err)
 		}
-		err = utils.CreateTables(db.Sqlx, cfg)
+		err = db.CreateTables(cfg)
 		if err != nil {
 			log.Fatal("Error while creating tables: ", err)
 		}
@@ -46,7 +45,7 @@ func main() {
 
 		for {
 			fmt.Printf("--- Migrating data from row %v to row %v --- \n", offset, offset+limit)
-			txRows, err := selectRows(limit, offset, db.Sqlx)
+			txRows, err := db.SelectRows(limit, offset)
 			if len(txRows) == 0 {
 				break
 			}
@@ -54,34 +53,23 @@ func main() {
 			if err != nil {
 				log.Fatal("error while selecting transaction rows: ", err)
 			}
-			err = utils.InsertTransactions(txRows, cfg, db)
+			err = db.InsertTransactions(txRows, cfg)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal("error while inserting data: ", err)
 			}
 
 			offset += limit
 		}
 
-		err = utils.DropMessageByAddressFunc(db.Sqlx)
+		err = db.DropMessageByAddressFunc()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("error while dropping message by address function: ", err)
 		}
-		err = utils.CreateMessageByAddressFunc(db.Sqlx)
+		err = db.CreateMessageByAddressFunc()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("error while creating message by address function: ", err)
 		}
 		fmt.Println("--- Migration completed ---")
 	}
 
-}
-
-func selectRows(limit int64, offset int64, db *sqlx.DB) ([]types.TransactionRow, error) {
-	stmt := fmt.Sprintf("SELECT * FROM transaction_old ORDER BY height LIMIT %v OFFSET %v", limit, offset)
-	var txRows []types.TransactionRow
-	err := db.Select(&txRows, stmt)
-	if err != nil {
-		return nil, err
-	}
-
-	return txRows, nil
 }

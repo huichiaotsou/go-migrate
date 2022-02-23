@@ -10,10 +10,9 @@ import (
 	"strconv"
 
 	"github.com/huichiaotsou/migrate-go/types"
-	"github.com/jmoiron/sqlx"
 )
 
-func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *DB) error {
+func (db *DB) InsertTransactions(txRows []types.TransactionRow, cfg *types.Config) error {
 	stmt := `INSERT INTO transaction 
 (hash, height, success, messages, memo, signatures, signer_infos, fee, gas_wanted, gas_used, raw_log, logs, partition_id) VALUES 
 `
@@ -21,7 +20,7 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *DB
 	for i, tx := range txRows {
 		// Create partition table if not exists
 		partitionID := tx.Height / int64(cfg.PartitionSize)
-		err := CreatePartitionTable("transaction", partitionID, db.Sqlx)
+		err := db.CreatePartitionTable("transaction", partitionID)
 		if err != nil {
 			return fmt.Errorf("error while creating transaction partition table: %s", err)
 		}
@@ -45,7 +44,7 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *DB
 
 	for _, tx := range txRows {
 		// Handle messages of this transaction
-		err := InsertMessages(tx, db.Sqlx)
+		err := db.InsertMessages(tx)
 		if err != nil {
 			return fmt.Errorf("error while inserting messages: %s", err)
 		}
@@ -54,14 +53,14 @@ func InsertTransactions(txRows []types.TransactionRow, cfg *types.Config, db *DB
 	return nil
 }
 
-func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
+func (db *DB) InsertMessages(tx types.TransactionRow) error {
 	// Create partition table if not exists
 	partitionSize, err := strconv.ParseInt(os.Getenv("PARTITION_SIZE"), 10, 64)
 	if err != nil {
 		return fmt.Errorf("error while parsing partition size to int64 for transaction: %s", err)
 	}
 	partitionID := tx.Height / partitionSize
-	err = CreatePartitionTable("message", partitionID, db)
+	err = db.CreatePartitionTable("message", partitionID)
 	if err != nil {
 		return fmt.Errorf("error while creating message partition table: %s", err)
 	}
@@ -100,7 +99,7 @@ func InsertMessages(tx types.TransactionRow, db *sqlx.DB) error {
 	stmt = stmt[:len(stmt)-1] // remove trailing ","
 	stmt += " ON CONFLICT DO NOTHING"
 
-	_, err = db.Exec(stmt, params...)
+	_, err = db.Sqlx.Exec(stmt, params...)
 	if err != nil {
 		return err
 	}

@@ -4,16 +4,15 @@ import (
 	"fmt"
 
 	"github.com/huichiaotsou/migrate-go/types"
-	"github.com/jmoiron/sqlx"
 )
 
-func CreateTables(db *sqlx.DB, cfg *types.Config) error {
-	err := createTxTable(db, cfg)
+func (db *DB) CreateTables(cfg *types.Config) error {
+	err := db.createTxTable(cfg)
 	if err != nil {
 		return fmt.Errorf("error while creating transaction table: %s", err)
 	}
 
-	err = createMsgTable(db, cfg)
+	err = db.createMsgTable(cfg)
 	if err != nil {
 		return fmt.Errorf("error while creating messaage table: %s", err)
 	}
@@ -21,7 +20,7 @@ func CreateTables(db *sqlx.DB, cfg *types.Config) error {
 	return nil
 }
 
-func createTxTable(db *sqlx.DB, cfg *types.Config) error {
+func (db *DB) createTxTable(cfg *types.Config) error {
 	fmt.Println("CREATE TABLE transaction")
 
 	stmt := fmt.Sprintf(`CREATE TABLE transaction
@@ -53,7 +52,7 @@ func createTxTable(db *sqlx.DB, cfg *types.Config) error {
 	CREATE INDEX transaction_height_index ON transaction (height);
 	CREATE INDEX transaction_partition_id_index ON transaction (partition_id);
 	GRANT ALL PRIVILEGES ON transaction TO %s;`, cfg.PGUSER)
-	_, err := db.Exec(stmt)
+	_, err := db.Sqlx.Exec(stmt)
 
 	if err != nil {
 		return err
@@ -62,7 +61,7 @@ func createTxTable(db *sqlx.DB, cfg *types.Config) error {
 	return nil
 }
 
-func createMsgTable(db *sqlx.DB, cfg *types.Config) error {
+func (db *DB) createMsgTable(cfg *types.Config) error {
 	fmt.Println("CREATE TABLE message")
 
 	stmt := fmt.Sprintf(`CREATE TABLE message
@@ -83,7 +82,7 @@ func createMsgTable(db *sqlx.DB, cfg *types.Config) error {
       CREATE INDEX message_involved_accounts_index ON message (involved_accounts_addresses);
       GRANT ALL PRIVILEGES ON message TO %s;`, cfg.PGUSER)
 
-	_, err := db.Exec(stmt)
+	_, err := db.Sqlx.Exec(stmt)
 
 	if err != nil {
 		return err
@@ -92,20 +91,20 @@ func createMsgTable(db *sqlx.DB, cfg *types.Config) error {
 	return nil
 }
 
-func CreatePartitionTable(table string, partitionID int64, db *sqlx.DB) error {
+func (db *DB) CreatePartitionTable(table string, partitionID int64) error {
 	partitionTable := fmt.Sprintf("%s_%v", table, partitionID)
 	stmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES IN (%v)`, partitionTable, table, partitionID)
-	_, err := db.Exec(stmt)
+	_, err := db.Sqlx.Exec(stmt)
 	if err != nil {
 		return fmt.Errorf("error while creating %s partition table: %s", table, err)
 	}
 	return nil
 }
 
-func CreateMessageByAddressFunc(db *sqlx.DB) error {
+func (db *DB) CreateMessageByAddressFunc() error {
 	fmt.Println("CREATE FUNCTION messages_by_address()")
 
-	_, err := db.Exec(`CREATE FUNCTION messages_by_address(
+	_, err := db.Sqlx.Exec(`CREATE FUNCTION messages_by_address(
 		addresses TEXT [],
 		types TEXT [],
 		"limit" BIGINT = 100,
