@@ -25,6 +25,7 @@ func SetConfig(cfg *Config) error {
 
 	cfg.Limit = limit
 	cfg.PartitionSize = partitionSize
+	cfg.PGUSER = os.Getenv("PGUSER")
 
 	return nil
 }

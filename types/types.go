@@ -18,4 +18,5 @@ type TransactionRow struct {
 type Config struct {
 	Limit         int64
 	PartitionSize int64
+	PGUSER        string
 }

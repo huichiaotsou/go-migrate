@@ -28,22 +28,24 @@ func main() {
 
 	switch os.Args[1] {
 	case "prepare-tables":
+		fmt.Println("--- Preparing tables ---")
 		err = utils.AlterTables(db.Sqlx)
 		if err != nil {
 			log.Fatal("Error while altering tables", err)
 		}
-
-		err = utils.CreateTables(db.Sqlx)
+		err = utils.CreateTables(db.Sqlx, cfg)
 		if err != nil {
 			log.Fatal("Error while creating tables: ", err)
 		}
+
+		fmt.Println("--- Preparing tables completed ---")
 
 	case "migrate":
 		limit := cfg.Limit
 		offset := int64(0)
 
 		for {
-			fmt.Printf("Migrating from row %v to row %v\n", offset, offset+limit)
+			fmt.Printf("--- Migrating data from row %v to row %v --- \n", offset, offset+limit)
 			txRows, err := selectRows(limit, offset, db.Sqlx)
 			if len(txRows) == 0 {
 				break
@@ -68,7 +70,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("--- Migration completed ---")
 	}
+
 }
 
 func selectRows(limit int64, offset int64, db *sqlx.DB) ([]types.TransactionRow, error) {

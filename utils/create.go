@@ -3,16 +3,17 @@ package utils
 import (
 	"fmt"
 
+	"github.com/huichiaotsou/migrate-go/types"
 	"github.com/jmoiron/sqlx"
 )
 
-func CreateTables(db *sqlx.DB) error {
-	err := createTxTable(db)
+func CreateTables(db *sqlx.DB, cfg *types.Config) error {
+	err := createTxTable(db, cfg)
 	if err != nil {
 		return fmt.Errorf("error while creating transaction table: %s", err)
 	}
 
-	err = createMsgTable(db)
+	err = createMsgTable(db, cfg)
 	if err != nil {
 		return fmt.Errorf("error while creating messaage table: %s", err)
 	}
@@ -20,8 +21,10 @@ func CreateTables(db *sqlx.DB) error {
 	return nil
 }
 
-func createTxTable(db *sqlx.DB) error {
-	_, err := db.Exec(`CREATE TABLE transaction
+func createTxTable(db *sqlx.DB, cfg *types.Config) error {
+	fmt.Println("CREATE TABLE transaction")
+
+	stmt := fmt.Sprintf(`CREATE TABLE transaction
 	(
 		hash         TEXT    NOT NULL,
 		height       BIGINT  NOT NULL REFERENCES block (height),
@@ -49,7 +52,8 @@ func createTxTable(db *sqlx.DB) error {
 	CREATE INDEX transaction_hash_index ON transaction (hash);
 	CREATE INDEX transaction_height_index ON transaction (height);
 	CREATE INDEX transaction_partition_id_index ON transaction (partition_id);
-	GRANT ALL PRIVILEGES ON transaction TO forbole;`)
+	GRANT ALL PRIVILEGES ON transaction TO %s;`, cfg.PGUSER)
+	_, err := db.Exec(stmt)
 
 	if err != nil {
 		return err
@@ -58,8 +62,10 @@ func createTxTable(db *sqlx.DB) error {
 	return nil
 }
 
-func createMsgTable(db *sqlx.DB) error {
-	_, err := db.Exec(`CREATE TABLE message
+func createMsgTable(db *sqlx.DB, cfg *types.Config) error {
+	fmt.Println("CREATE TABLE message")
+
+	stmt := fmt.Sprintf(`CREATE TABLE message
     (
           transaction_hash            TEXT   NOT NULL,
           index                       BIGINT NOT NULL,
@@ -75,7 +81,9 @@ func createMsgTable(db *sqlx.DB) error {
       CREATE INDEX message_transaction_hash_index ON message (transaction_hash);
       CREATE INDEX message_type_index ON message (type);
       CREATE INDEX message_involved_accounts_index ON message (involved_accounts_addresses);
-      GRANT ALL PRIVILEGES ON message TO forbole;`)
+      GRANT ALL PRIVILEGES ON message TO %s;`, cfg.PGUSER)
+
+	_, err := db.Exec(stmt)
 
 	if err != nil {
 		return err
@@ -95,6 +103,8 @@ func CreatePartitionTable(table string, partitionID int64, db *sqlx.DB) error {
 }
 
 func CreateMessageByAddressFunc(db *sqlx.DB) error {
+	fmt.Println("CREATE FUNCTION messages_by_address()")
+
 	_, err := db.Exec(`CREATE FUNCTION messages_by_address(
 		addresses TEXT [],
 		types TEXT [],
