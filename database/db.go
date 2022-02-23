@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/huichiaotsou/migrate-go/types"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -23,20 +22,4 @@ func GetDB() *DB {
 		Db:   db,
 		Sqlx: sqlx.NewDb(db, "postgresql"),
 	}
-}
-
-type DB struct {
-	Db   *sql.DB
-	Sqlx *sqlx.DB
-}
-
-func (db *DB) SelectRows(limit int64, offset int64) ([]types.TransactionRow, error) {
-	stmt := fmt.Sprintf("SELECT * FROM transaction_old ORDER BY height LIMIT %v OFFSET %v", limit, offset)
-	var txRows []types.TransactionRow
-	err := db.Sqlx.Select(&txRows, stmt)
-	if err != nil {
-		return nil, err
-	}
-
-	return txRows, nil
 }
