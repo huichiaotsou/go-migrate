@@ -1,11 +1,7 @@
-package utils
-
-import (
-	"github.com/huichiaotsou/migrate-go/types"
-)
+package types
 
 func MessageParser(msg map[string]interface{}) (addresses string) {
-	accountParser := append(types.DefaultAccountParser, types.CustomAccountParser...)
+	accountParser := append(DefaultAccountParser, CustomAccountParser...)
 
 	addresses += "{"
 	for _, role := range accountParser {

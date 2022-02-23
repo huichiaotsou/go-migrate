@@ -1,4 +1,4 @@
-package utils
+package database
 
 import (
 	"database/sql/driver"
@@ -82,7 +82,7 @@ func (db *DB) InsertMessages(tx types.TransactionRow) error {
 	for i, m := range msgs {
 		// Append params
 		msgType := m["@type"].(string)
-		involvedAddresses := MessageParser(m)
+		involvedAddresses := types.MessageParser(m)
 		delete(m, "@type")
 		mBz, err := json.Marshal(&m)
 		if err != nil {
