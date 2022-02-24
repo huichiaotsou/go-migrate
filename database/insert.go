@@ -1,9 +1,7 @@
 package database
 
 import (
-	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -18,7 +16,7 @@ func (db *DB) InsertTransactions(txRows []types.TransactionRow, cfg *types.Confi
 `
 	var params []interface{}
 	for i, tx := range txRows {
-		// Create partition table if not exists
+		// Create transaction partition table if not exists
 		partitionID := tx.Height / int64(cfg.PartitionSize)
 		err := db.CreatePartitionTable("transaction", partitionID)
 		if err != nil {
@@ -60,6 +58,8 @@ func (db *DB) InsertMessages(tx types.TransactionRow) error {
 		return fmt.Errorf("error while parsing partition size to int64 for transaction: %s", err)
 	}
 	partitionID := tx.Height / partitionSize
+
+	// Create message partition table if not exists
 	err = db.CreatePartitionTable("message", partitionID)
 	if err != nil {
 		return fmt.Errorf("error while creating message partition table: %s", err)
@@ -81,14 +81,14 @@ func (db *DB) InsertMessages(tx types.TransactionRow) error {
 
 	for i, m := range msgs {
 		// Append params
-		msgType := m["@type"].(string)
+		msgType := m["@type"].(string)[1:] // remove head "/"
 		involvedAddresses := types.MessageParser(m)
 		delete(m, "@type")
 		mBz, err := json.Marshal(&m)
 		if err != nil {
 			return fmt.Errorf("error while marshaling msg value to json: %s", err)
 		}
-		params = append(params, tx.Hash, i, msgType[1:], string(mBz), involvedAddresses, tx.Height, partitionID)
+		params = append(params, tx.Hash, i, msgType, string(mBz), involvedAddresses, tx.Height, partitionID)
 
 		// Add columns to stmt
 		ai := i * 7
@@ -105,24 +105,4 @@ func (db *DB) InsertMessages(tx types.TransactionRow) error {
 	}
 
 	return nil
-}
-
-type Message struct {
-	Type  int `json:"@type"`
-	Value Value
-}
-
-type Value map[string]interface{}
-
-func (a Value) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-func (a *Value) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &a)
 }
